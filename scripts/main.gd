@@ -1,13 +1,21 @@
 extends Node2D
 
 const TAVERN_BACKGROUND := preload("res://assets/tavern_storm.png")
+const COMPANION_PORTRAIT := preload("res://assets/companion_placeholder.png")
 const DiceViewScript := preload("res://scripts/dice_view.gd")
 const CompanionBrainScript := preload("res://scripts/companion_brain.gd")
+
+const VIEWPORT_SIZE := Vector2(640, 360)
+const SCENE_SOURCE_SIZE := Vector2(640, 360)
 
 var rng := RandomNumberGenerator.new()
 var rain_phase := 0.0
 var next_lightning := 2.5
 var window_phase := 0.0
+var portrait_phase := 0.0
+
+var preview_frame_rect := Rect2(12, 12, 616, 208)
+var preview_image_rect := Rect2()
 
 var dialogue_speaker: Label
 var dialogue_text: Label
@@ -18,20 +26,30 @@ var dice_view: Control
 var dice_title: Label
 var dice_details: Label
 var companion_status: Label
+var player_status: Label
+var portrait_texture: TextureRect
 var companion
 
 func _ready() -> void:
     texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
     rng.randomize()
     companion = CompanionBrainScript.new()
+    _update_preview_rect()
     _build_ui()
+    _refresh_player_status()
+    _refresh_companion_status()
     _show_intro()
     queue_redraw()
 
 func _process(delta: float) -> void:
     rain_phase += delta * 85.0
     window_phase += delta * 3.4
+    portrait_phase += delta * 3.0
     next_lightning -= delta
+
+    if portrait_texture:
+        var pulse := 0.94 + (sin(portrait_phase) + 1.0) * 0.03
+        portrait_texture.modulate = Color(1.0, 1.0, 1.0, pulse)
 
     if next_lightning <= 0.0:
         _trigger_lightning()
@@ -40,28 +58,50 @@ func _process(delta: float) -> void:
     queue_redraw()
 
 func _draw() -> void:
-    draw_texture_rect(TAVERN_BACKGROUND, Rect2(0, 0, 640, 360), false)
+    draw_rect(Rect2(Vector2.ZERO, VIEWPORT_SIZE), Color("0b0f1a"), true)
+    draw_rect(preview_frame_rect, Color("111728"), true)
+    draw_texture_rect(TAVERN_BACKGROUND, preview_image_rect, false)
     _draw_window_flicker()
     _draw_rain()
+
+func _update_preview_rect() -> void:
+    preview_image_rect = _fit_rect_keep_aspect(SCENE_SOURCE_SIZE, preview_frame_rect)
+
+func _fit_rect_keep_aspect(source_size: Vector2, target_rect: Rect2) -> Rect2:
+    var scale_factor := minf(target_rect.size.x / source_size.x, target_rect.size.y / source_size.y)
+    var final_size := source_size * scale_factor
+    var pos := target_rect.position + (target_rect.size - final_size) * 0.5
+    return Rect2(pos, final_size)
+
+func _scene_to_preview_point(point: Vector2) -> Vector2:
+    var sx := preview_image_rect.size.x / SCENE_SOURCE_SIZE.x
+    var sy := preview_image_rect.size.y / SCENE_SOURCE_SIZE.y
+    return Vector2(
+        preview_image_rect.position.x + point.x * sx,
+        preview_image_rect.position.y + point.y * sy
+    )
+
+func _scene_to_preview_rect(rect: Rect2) -> Rect2:
+    var top_left := _scene_to_preview_point(rect.position)
+    var bottom_right := _scene_to_preview_point(rect.position + rect.size)
+    return Rect2(top_left, bottom_right - top_left)
 
 func _draw_window_flicker() -> void:
     var pulse := 0.08 + (sin(window_phase) + 1.0) * 0.025
     var glow := Color(1.0, 0.57, 0.18, pulse)
-    draw_rect(Rect2(135, 188, 34, 31).grow(5), glow)
-    draw_rect(Rect2(251, 187, 31, 33).grow(5), glow)
-    draw_rect(Rect2(375, 179, 17, 21).grow(4), glow)
+    draw_rect(_scene_to_preview_rect(Rect2(135, 188, 34, 31)).grow(4), glow)
+    draw_rect(_scene_to_preview_rect(Rect2(251, 187, 31, 33)).grow(4), glow)
+    draw_rect(_scene_to_preview_rect(Rect2(375, 179, 17, 21)).grow(3), glow)
 
 func _draw_rain() -> void:
+    var clip := preview_image_rect
     for i in range(105):
         var x := fmod(float(i * 73) + rain_phase * 2.1, 700.0) - 30.0
         var y := fmod(float(i * 41) + rain_phase * 3.8, 410.0) - 30.0
-        draw_line(
-            Vector2(x, y),
-            Vector2(x - 4.0, y + 11.0),
-            Color(0.63, 0.74, 0.91, 0.48),
-            1.0,
-            true
-        )
+        var start := _scene_to_preview_point(Vector2(x, y))
+        var finish := _scene_to_preview_point(Vector2(x - 4.0, y + 11.0))
+        if clip.has_point(start) or clip.has_point(finish):
+            draw_line(start, finish, Color(0.63, 0.74, 0.91, 0.48), 1.0, true)
 
 func _build_ui() -> void:
     var ui := CanvasLayer.new()
@@ -78,54 +118,60 @@ func _build_ui() -> void:
     flash_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     root.add_child(flash_rect)
 
-    _build_status_panels(root)
+    _build_preview_overlay(root)
     _build_dialogue_panel(root)
     _build_dice_overlay(root)
 
-func _build_status_panels(root: Control) -> void:
-    var player_panel := PanelContainer.new()
-    player_panel.position = Vector2(12, 10)
-    player_panel.size = Vector2(176, 42)
-    player_panel.add_theme_stylebox_override(
+func _build_preview_overlay(root: Control) -> void:
+    var portrait_panel := PanelContainer.new()
+    portrait_panel.position = Vector2(22, 26)
+    portrait_panel.size = Vector2(122, 170)
+    portrait_panel.add_theme_stylebox_override(
         "panel",
-        _panel_style(Color(0.05, 0.06, 0.10, 0.88), Color("68759c"), 2)
+        _panel_style(Color(0.04, 0.05, 0.09, 0.92), Color("8b7497"), 2)
     )
-    root.add_child(player_panel)
+    root.add_child(portrait_panel)
 
-    var player_label := Label.new()
-    player_label.text = "WĘDROWIEC  •  HP 18/18\nCHA +3   PER +2"
-    player_label.add_theme_font_size_override("font_size", 11)
-    player_label.add_theme_color_override("font_color", Color("e7ebff"))
-    player_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    player_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    player_panel.add_child(player_label)
+    var portrait_margin := MarginContainer.new()
+    portrait_margin.add_theme_constant_override("margin_left", 8)
+    portrait_margin.add_theme_constant_override("margin_right", 8)
+    portrait_margin.add_theme_constant_override("margin_top", 8)
+    portrait_margin.add_theme_constant_override("margin_bottom", 8)
+    portrait_panel.add_child(portrait_margin)
 
-    var companion_panel := PanelContainer.new()
-    companion_panel.position = Vector2(452, 10)
-    companion_panel.size = Vector2(176, 42)
-    companion_panel.add_theme_stylebox_override(
-        "panel",
-        _panel_style(Color(0.05, 0.06, 0.10, 0.88), Color("8c6d77"), 2)
-    )
-    root.add_child(companion_panel)
+    var portrait_column := VBoxContainer.new()
+    portrait_column.add_theme_constant_override("separation", 4)
+    portrait_margin.add_child(portrait_column)
 
-    companion_status = Label.new()
-    companion_status.add_theme_font_size_override("font_size", 11)
-    companion_status.add_theme_color_override("font_color", Color("f2e8ec"))
-    companion_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    companion_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    companion_panel.add_child(companion_status)
-    _refresh_companion_status()
+    var portrait_name := Label.new()
+    portrait_name.text = "MIRA"
+    portrait_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    portrait_name.add_theme_font_size_override("font_size", 12)
+    portrait_name.add_theme_color_override("font_color", Color("efd3f8"))
+    portrait_column.add_child(portrait_name)
+
+    portrait_texture = TextureRect.new()
+    portrait_texture.texture = COMPANION_PORTRAIT
+    portrait_texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    portrait_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+    portrait_texture.custom_minimum_size = Vector2(96, 118)
+    portrait_texture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+    portrait_column.add_child(portrait_texture)
+
+    var portrait_hint := Label.new()
+    portrait_hint.text = "placeholder\nportret / gif"
+    portrait_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    portrait_hint.add_theme_font_size_override("font_size", 9)
+    portrait_hint.add_theme_color_override("font_color", Color("b8bfd7"))
+    portrait_column.add_child(portrait_hint)
 
 func _build_dialogue_panel(root: Control) -> void:
     var panel := PanelContainer.new()
-    panel.anchor_left = 0.03
-    panel.anchor_top = 0.61
-    panel.anchor_right = 0.97
-    panel.anchor_bottom = 0.97
+    panel.position = Vector2(12, 230)
+    panel.size = Vector2(616, 118)
     panel.add_theme_stylebox_override(
         "panel",
-        _panel_style(Color(0.035, 0.04, 0.065, 0.95), Color("7f8bad"), 2)
+        _panel_style(Color(0.035, 0.04, 0.065, 0.96), Color("7f8bad"), 2)
     )
     root.add_child(panel)
 
@@ -136,33 +182,45 @@ func _build_dialogue_panel(root: Control) -> void:
     margin.add_theme_constant_override("margin_bottom", 8)
     panel.add_child(margin)
 
-    var columns := HBoxContainer.new()
-    columns.add_theme_constant_override("separation", 14)
-    margin.add_child(columns)
+    var content := VBoxContainer.new()
+    content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    content.add_theme_constant_override("separation", 4)
+    margin.add_child(content)
 
-    var text_column := VBoxContainer.new()
-    text_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    text_column.add_theme_constant_override("separation", 4)
-    columns.add_child(text_column)
+    var status_row := HBoxContainer.new()
+    status_row.add_theme_constant_override("separation", 10)
+    content.add_child(status_row)
+
+    player_status = Label.new()
+    player_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    player_status.add_theme_font_size_override("font_size", 10)
+    player_status.add_theme_color_override("font_color", Color("dde6ff"))
+    status_row.add_child(player_status)
+
+    companion_status = Label.new()
+    companion_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    companion_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+    companion_status.add_theme_font_size_override("font_size", 10)
+    companion_status.add_theme_color_override("font_color", Color("f2e8ec"))
+    status_row.add_child(companion_status)
 
     dialogue_speaker = Label.new()
     dialogue_speaker.text = "NARRATOR"
     dialogue_speaker.add_theme_font_size_override("font_size", 12)
     dialogue_speaker.add_theme_color_override("font_color", Color("e6b970"))
-    text_column.add_child(dialogue_speaker)
+    content.add_child(dialogue_speaker)
 
     dialogue_text = Label.new()
-    dialogue_text.custom_minimum_size = Vector2(0, 76)
-    dialogue_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    dialogue_text.custom_minimum_size = Vector2(0, 32)
     dialogue_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    dialogue_text.add_theme_font_size_override("font_size", 12)
+    dialogue_text.add_theme_font_size_override("font_size", 11)
     dialogue_text.add_theme_color_override("font_color", Color("edf0fa"))
-    text_column.add_child(dialogue_text)
+    content.add_child(dialogue_text)
 
     choices_box = VBoxContainer.new()
-    choices_box.custom_minimum_size = Vector2(250, 0)
+    choices_box.size_flags_vertical = Control.SIZE_SHRINK_END
     choices_box.add_theme_constant_override("separation", 5)
-    columns.add_child(choices_box)
+    content.add_child(choices_box)
 
 func _build_dice_overlay(root: Control) -> void:
     dice_overlay = Control.new()
@@ -213,8 +271,7 @@ func _build_dice_overlay(root: Control) -> void:
 func _show_intro() -> void:
     _set_dialogue(
         "NARRATOR",
-        "Burza rozrywa niebo nad wzgórzem. Na szczycie stoi samotna karczma. " +
-        "W oknach pali się światło, ale drzwi są zamknięte. Mira spogląda na ciebie spod mokrego kaptura."
+        "Burza rozrywa niebo nad wzgórzem. Na górze widzisz samotną karczmę. Mira spogląda na ciebie spod mokrego kaptura i czeka, co zrobisz dalej."
     )
     _clear_choices()
     _add_choice("[PERSWAZJA +3] Przekonaj karczmarza.  DC 13", _choice_persuasion)
@@ -256,8 +313,7 @@ func _after_perception(_roll: int, _total: int, success: bool) -> void:
         companion.remember("spotted_tracks")
         _set_dialogue(
             "NARRATOR",
-            "W błocie dostrzegasz świeże ślady trzech osób. Prowadzą od lasu do bocznego wejścia karczmy. " +
-            "Ktoś próbował zatrzeć je gałęzią."
+            "W błocie dostrzegasz świeże ślady trzech osób. Prowadzą od lasu do bocznego wejścia karczmy. Ktoś próbował zatrzeć je gałęzią."
         )
         _clear_choices()
         _add_choice("Powiedz o tym Mirze.", _choice_companion)
@@ -280,8 +336,7 @@ func _companion_after_failed_persuasion() -> void:
 func _enter_tavern() -> void:
     _set_dialogue(
         "NARRATOR",
-        "Drzwi ustępują z ciężkim skrzypnięciem. Uderza w was ciepło paleniska, zapach mokrej wełny " +
-        "i pieczonego mięsa. To koniec pierwszej sceny prototypu."
+        "Drzwi ustępują z ciężkim skrzypnięciem. Uderza w was ciepło paleniska, zapach mokrej wełny i pieczonego mięsa. To koniec pierwszej sceny prototypu."
     )
     _clear_choices()
     _add_choice("Zapytaj Mirę o wejście.", _companion_after_success)
@@ -296,8 +351,7 @@ func _companion_after_success() -> void:
 func _side_door() -> void:
     _set_dialogue(
         "NARRATOR",
-        "Boczne drzwi są uchylone o szerokość palca. Z wnętrza dobiega krótki metaliczny stuk, " +
-        "jakby ktoś właśnie odłożył ostrze na stół."
+        "Boczne drzwi są uchylone o szerokość palca. Z wnętrza dobiega krótki metaliczny stuk, jakby ktoś właśnie odłożył ostrze na stół."
     )
     _clear_choices()
     _add_choice("[PERCEPCJA +2] Nasłuchuj.  DC 11", _choice_perception)
@@ -367,8 +421,8 @@ func _clear_choices() -> void:
 func _add_choice(text: String, callback: Callable) -> void:
     var button := Button.new()
     button.text = text
-    button.custom_minimum_size = Vector2(0, 27)
-    button.add_theme_font_size_override("font_size", 11)
+    button.custom_minimum_size = Vector2(0, 24)
+    button.add_theme_font_size_override("font_size", 10)
     button.add_theme_color_override("font_color", Color("eef1ff"))
     button.add_theme_color_override("font_hover_color", Color.WHITE)
     button.add_theme_stylebox_override(
@@ -410,8 +464,11 @@ func _button_style(bg: Color, border: Color) -> StyleBoxFlat:
     style.content_margin_right = 7
     return style
 
+func _refresh_player_status() -> void:
+    player_status.text = "WĘDROWIEC  •  HP 18/18  •  CHA +3  •  PER +2"
+
 func _refresh_companion_status() -> void:
-    companion_status.text = "%s  •  RELACJA %d\n%s" % [
+    companion_status.text = "%s  •  RELACJA %d  •  %s" % [
         companion.companion_name.to_upper(),
         companion.relation,
         companion.mood.to_upper()
