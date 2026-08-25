@@ -11,8 +11,12 @@ config_version=5
 [application]
 
 config/name="Gra Pixel DnD"
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/character_select.tscn"
 config/features=PackedStringArray("4.7")
+
+[autoload]
+
+GameState="*res://scripts/game_state.gd"
 
 [display]
 
