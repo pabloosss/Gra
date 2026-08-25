@@ -265,15 +265,15 @@ func _build_dice_overlay(root: Control) -> void:
 func _show_intro() -> void:
 	_set_dialogue("NARRATOR", "Burza rozrywa niebo nad wzgórzem. Na górze widzisz samotną karczmę. Mira spogląda na ciebie spod mokrego kaptura i czeka, co zrobisz dalej.")
 	_clear_choices()
-	_add_choice("[PERSWAZJA +3] Przekonaj karczmarza.  DC 13", _choice_persuasion)
-	_add_choice("[PERCEPCJA +2] Obejrzyj teren.  DC 11", _choice_perception)
+	_add_choice("[PERSWAZJA %+d] Przekonaj karczmarza.  DC 13" % GameState.charisma, _choice_persuasion)
+	_add_choice("[PERCEPCJA %+d] Obejrzyj teren.  DC 11" % GameState.perception, _choice_perception)
 	_add_choice("Zapytaj Mirę, co o tym myśli.", _choice_companion)
 
 func _choice_persuasion() -> void:
-	_run_check("PERSWAZJA", 3, 13, _after_persuasion)
+	_run_check("PERSWAZJA", GameState.charisma, 13, _after_persuasion)
 
 func _choice_perception() -> void:
-	_run_check("PERCEPCJA", 2, 11, _after_perception)
+	_run_check("PERCEPCJA", GameState.perception, 11, _after_perception)
 
 func _choice_companion() -> void:
 	_set_dialogue(companion.companion_name.to_upper(), companion.react("storm_tavern"))
@@ -327,7 +327,7 @@ func _companion_after_success() -> void:
 func _side_door() -> void:
 	_set_dialogue("NARRATOR", "Boczne drzwi są uchylone o szerokość palca. Z wnętrza dobiega krótki metaliczny stuk, jakby ktoś właśnie odłożył ostrze na stół.")
 	_clear_choices()
-	_add_choice("[PERCEPCJA +2] Nasłuchuj.  DC 11", _choice_perception)
+	_add_choice("[PERCEPCJA %+d] Nasłuchuj.  DC 11" % GameState.perception, _choice_perception)
 	_add_choice("Wycofaj się do Miry.", _choice_companion)
 
 func _run_check(skill: String, bonus: int, dc: int, callback: Callable) -> void:
@@ -421,5 +421,5 @@ func _button_style(bg: Color, border: Color) -> StyleBoxFlat:
 	return style
 
 func _refresh_stats() -> void:
-	player_stats_text.text = "HP: 18/18\nCharyzma: +3\nPercepcja: +2"
+	player_stats_text.text = "%s • %s\nHP: %d/%d\nPerswazja: %+d\nPercepcja: %+d" % [GameState.player_name, GameState.class_name, GameState.hp, GameState.max_hp, GameState.charisma, GameState.perception]
 	companion_stats_text.text = "Imię: %s\nRelacja: %d\nNastrój: %s" % [companion.companion_name, companion.relation, companion.mood.capitalize()]
