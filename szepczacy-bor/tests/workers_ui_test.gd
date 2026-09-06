@@ -1,0 +1,31 @@
+extends SceneTree
+func _initialize(): call_deferred("run")
+func frames():
+	for i in range(8): await process_frame
+func run():
+	root.size=Vector2i(1440,900)
+	var s=root.get_node("State")
+	var ui=load("res://main.tscn").instantiate()
+	root.add_child(ui)
+	await frames()
+	assert(ui.hire_button.disabled)
+	s.buildings[0]=1;s.coins=180;ui.update_ui()
+	await frames()
+	assert(not ui.hire_button.disabled)
+	var pos=ui.hire_button.get_global_rect().get_center()
+	var ev=InputEventMouseButton.new()
+	ev.button_index=MOUSE_BUTTON_LEFT;ev.pressed=true;ev.position=pos;ev.global_position=pos
+	root.push_input(ev)
+	await frames()
+	ev=ev.duplicate();ev.pressed=false;root.push_input(ev)
+	await frames()
+	assert(s.hired_workers==1 and s.coins==0)
+	assert(ui.hire_button.disabled and "279" in ui.hire_button.text)
+	assert("1 / 3" in ui.worker_info.text)
+	root.size=Vector2i(960,680)
+	await frames()
+	assert(ui.hire_button.get_global_rect().end.x<=root.size.x)
+	print("WORKERS UI: button click, price, count, disabled state, small window PASS")
+	ui.queue_free()
+	await frames()
+	quit()

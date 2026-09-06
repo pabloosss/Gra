@@ -1,3 +1,15 @@
+# Szepczący Bór — nowa gra idle
+
+Aktualny clicker Godot jest w folderze [szepczacy-bor](szepczacy-bor).
+
+Gotowy ZIP Windows został dołączony do rozmowy z aktualizacją. Wypakuj go i uruchom `SzepczacyBor.exe`. Godot nie jest potrzebny do grania. Repozytorium zawiera kompletny projekt i ustawienia eksportu Windows.
+
+Do edycji w Godot 4.5.1 zaimportuj `szepczacy-bor/project.godot`. Aktualizacja dodaje kupowanie dodatkowych drwali za monety, miejsca w chacie, zapis i produkcję offline.
+
+Poniżej dokumentacja wcześniejszego projektu RPG, który pozostaje w katalogu głównym.
+
+---
+
 # Gra Pixel DnD — prototyp 0.1
 
 Pierwszy grywalny prototyp narracyjnego pixel-RPG inspirowanego sesją RPG/DnD.
