@@ -1,0 +1,18 @@
+// Headless logic regression checks. Browser smoke tests are separate.
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
+const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');const source=html.match(/<script>([\s\S]*)<\/script>/)[1];
+const elements=new Map();function element(){return {classList:{add(){},remove(){},toggle(){}},style:{},replaceChildren(){},append(){},getContext(){return {setTransform(){},drawImage(){}}},toDataURL(){return 'data:image/png;base64,'},disabled:true}}
+const document={getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id)},createElement:element,addEventListener(){}};
+const context=vm.createContext({console,document,innerWidth:1366,innerHeight:768,devicePixelRatio:1,addEventListener(){},localStorage:{getItem(){return null},setItem(){}},performance:{now:()=>1000},Image:class{set src(v){this.onload()}},Audio:class{cloneNode(){return this}play(){return Promise.resolve()}},URLSearchParams,location:{search:'?test=1'},requestAnimationFrame(){},window:{}});vm.runInContext(source,context);const t=context.window.__test;
+let count=0;function check(name,fn){fn();count++;console.log('PASS',name)}
+check('new run initializes weapons and health',()=>{t.start();assert.equal(t.game.player.hp,100);assert.equal(t.mode,'play');assert.equal(t.game.stats.arrows,1)});
+check('movement normalizes diagonals',()=>{vm.runInContext("keys.add('d'); keys.add('s')",context);t.tick(1/60);assert.ok(Math.abs(Math.hypot(t.game.player.x,t.game.player.y)-3)<1e-9);vm.runInContext('keys.clear()',context)});
+check('multiple XP levels preserve pending upgrade choices',()=>{t.gainXP(70);let n=t.game.pending;assert.ok(n>=3);t.offer();assert.equal(t.mode,'upgrade');for(let i=0;i<n;i++)t.choose(0);assert.equal(t.mode,'play');assert.equal(t.game.pending,0)});
+check('pause and resume',()=>{t.pause(true);assert.equal(t.mode,'pause');t.pause(false);assert.equal(t.mode,'play')});
+check('melee kills enemy and drops experience',()=>{t.start();let e=t.spawn('normal');e.x=20;e.y=0;e.hp=1;t.tick(1/60);assert.equal(t.game.kills,1);assert.ok(t.game.loot.length||t.game.xp>0)});
+check('contact damage respects invulnerability',()=>{t.start();let e=t.spawn('boss');e.x=0;e.y=0;t.tick(1/60);let hp=t.game.player.hp;assert.ok(hp<100);t.tick(1/60);assert.equal(t.game.player.hp,hp)});
+check('arrows hit a target outside sword range',()=>{t.start();t.game.spawn=100;let e=t.spawn('normal');e.x=230;e.y=0;e.speed=0;for(let i=0;i<40;i++)t.tick(1/60);assert.ok(e.hp<e.maxHp)});
+check('boss appears at ten minutes and its death wins',()=>{t.start();t.game.t=599.99;t.tick(.02);assert.ok(t.game.bossSpawned);assert.equal(t.game.boss.kind,'boss');t.damage(t.game.boss,1e8);t.tick(1/60);assert.equal(t.mode,'end');assert.equal(document.getElementById('endLabel').textContent,'HORDA POKONANA')});
+check('death and restart reset the entire run',()=>{t.start();t.game.player.hp=-1;t.tick(1/60);assert.equal(t.mode,'end');t.start();assert.equal(t.game.t,0);assert.equal(t.game.kills,0);assert.equal(t.game.pending,0);assert.equal(t.game.boss,null);assert.equal(t.mode,'play')});
+check('spawn count stays bounded under sustained pressure',()=>{t.start();t.game.player.maxHp=t.game.player.hp=1e9;t.game.t=500;for(let i=0;i<1200;i++){t.tick(1/60);while(t.mode==='upgrade')t.choose(0)}assert.ok(t.game.enemies.length<=342)});
+console.log(`${count} checks passed`);
