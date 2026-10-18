@@ -1,7 +1,7 @@
 // Headless logic regression checks. Browser smoke tests are separate.
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
 const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');const source=html.match(/<script>([\s\S]*)<\/script>/)[1];
-const elements=new Map();function element(){return {classList:{add(){},remove(){},toggle(){}},style:{},replaceChildren(){},append(){},getContext(){return {setTransform(){},drawImage(){}}},toDataURL(){return 'data:image/png;base64,'},disabled:true}}
+const elements=new Map();function element(){return {dataset:{},setAttribute(){},classList:{add(){},remove(){},toggle(){}},style:{},replaceChildren(){},append(){},getContext(){return {setTransform(){},drawImage(){}}},toDataURL(){return 'data:image/png;base64,'},disabled:true}}
 const document={getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id)},createElement:element,addEventListener(){}};
 const context=vm.createContext({console,document,innerWidth:1366,innerHeight:768,devicePixelRatio:1,addEventListener(){},localStorage:{getItem(){return null},setItem(){}},performance:{now:()=>1000},Image:class{set src(v){this.onload()}},Audio:class{cloneNode(){return this}play(){return Promise.resolve()}},URLSearchParams,location:{search:'?test=1'},requestAnimationFrame(){},window:{}});vm.runInContext(source,context);const t=context.window.__test;
 let count=0;function check(name,fn){fn();count++;console.log('PASS',name)}
@@ -23,3 +23,12 @@ check('revive is usable once per run',()=>{t.meta.levels.revive=1;t.start();t.ga
 check('end rewards cannot be paid twice',()=>{t.start();t.game.t=60;let old=t.meta.gold;t.finish(false);assert.equal(t.meta.gold,old+6);t.finish(false);assert.equal(t.meta.gold,old+6)});
 check('reroll consumes one use without consuming a pending upgrade',()=>{t.meta.levels.reroll=1;t.start();t.gainXP(8);t.offer();let pending=t.game.pending;t.reroll();assert.equal(t.game.rerolls,0);assert.equal(t.game.pending,pending);t.choose(0);assert.equal(t.mode,'play')});
 console.log(`${count} total checks passed`);
+
+check('old saves migrate to three independent hero profiles',()=>{let old=t.validateSave({version:1,gold:123,levels:{vitality:2}});assert.equal(old.selected,'knight');assert.equal(old.heroes.ranger.xp,0);assert.equal(old.gold,123);assert.equal(old.levels.vitality,2)});
+check('hero talents are permanent and isolated',()=>{t.finish(false);t.openHeroes();t.selectHero('ranger');t.meta.heroes.ranger.xp=100;assert.equal(t.buyTalent('power'),true);assert.equal(t.points(),1);assert.equal(t.meta.heroes.knight.talents.power,0);t.start();assert.equal(t.game.heroId,'ranger');assert.equal(t.game.blade,false);assert.equal(t.game.stats.arrows,2);assert.equal(t.game.talents.power,1)});
+check('ranger skill creates twelve arrows and respects cooldown and pause',()=>{assert.equal(t.activateSkill(),true);assert.equal(t.game.shots.length,12);assert.equal(t.game.shots[0].damage,42);assert.equal(t.activateSkill(),false);t.pause(true);t.game.skillCD=0;assert.equal(t.activateSkill(),false);t.pause(false)});
+check('warden starts with orbs and skill heals and slows',()=>{t.finish(false);t.openHeroes();t.selectHero('warden');t.start();assert.equal(t.game.stats.arrows,0);assert.equal(t.game.stats.orbs,2);t.game.player.hp=20;let e=t.spawn('normal');t.activateSkill();assert.equal(t.game.player.hp,45);assert.equal(e.slow,3)});
+check('knight skill grants protection and damages nearby enemies',()=>{t.finish(false);t.openHeroes();t.selectHero('knight');t.start();let e=t.spawn('boss');e.x=50;e.y=0;let hp=e.hp;t.activateSkill();assert.ok(e.hp<hp);assert.equal(t.game.player.inv,2)});
+check('unearned and invalid talents are rejected on import',()=>{assert.throws(()=>t.validateSave({version:1,gold:0,levels:{},heroes:{knight:{xp:0,talents:{power:1}}}}));assert.throws(()=>t.validateSave({version:1,gold:0,levels:{},selected:'unknown'}))});
+check('talent reset restores points without losing mastery',()=>{t.finish(false);t.openHeroes();t.selectHero('ranger');t.refundTalents();assert.equal(t.points(),2);assert.equal(t.meta.heroes.ranger.xp,100);assert.equal(t.meta.heroes.ranger.talents.power,0)});
+console.log(`${count} total checks including characters passed`);

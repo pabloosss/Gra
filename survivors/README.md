@@ -1,4 +1,4 @@
-# Żelazny Bór — Survivors 0.2
+# Żelazny Bór — Survivors 0.3
 
 Grywalny prototyp inspirowany gatunkiem survivor / bullet heaven. Własny silnik 2D w JavaScript i Canvas; bez Godota, Unity, CDN i instalowania zależności przez gracza.
 
@@ -6,7 +6,7 @@ Grywalny prototyp inspirowany gatunkiem survivor / bullet heaven. Własny silnik
 
 1. Pobierz **tylko `survivors/index.html`** (na GitHubie otwórz plik i wybierz **Download raw file**).
 2. Otwórz pobrany plik dwuklikiem w Chrome, Edge albo Firefox.
-3. Kliknij **Rozpocznij wyprawę**.
+3. Kliknij **Wybierz postać**, wybierz klasę i kliknij **Wyrusz**.
 
 Nie musisz pobierać całego repozytorium ani ponad 4 GB źródłowego audio. Wszystkie używane grafiki i trzy efekty dźwiękowe są osadzone w HTML. Gra działa offline. To wersja komputerowa, sterowana klawiaturą.
 
@@ -62,3 +62,23 @@ Paczki graficzne i audio zachowują licencje autorów. Repozytorium nie zawiera 
 - Przy zmianie nazwy pliku, przeglądarki lub komputera użyj eksportu/importu; zapis lokalny plików HTML może być zależny od ścieżki i ustawień przeglądarki.
 
 Weryfikacja 0.2: 16 testów logiki oraz test Chromium obejmujący zakup, bonus w nowym podejściu, zapis po przeładowaniu, eksport, poprawny i błędny import. Obejrzano ekran tytułowy, walkę oraz Obóz.
+
+## Wersja 0.3 — postacie i trwałe umiejętności
+
+Przed każdą wyprawą wybiera się jedną z trzech dostępnych klas:
+
+| Postać | Broń początkowa | Umiejętność (Spacja lub przycisk) |
+|---|---|---|
+| Rycerz | Miecz i łuk | Żelazna przysięga: 65 obrażeń w promieniu 180, 2 s nietykalności; odnowienie 18 s |
+| Łowca | Dwie strzały w salwie | Grad strzał: 12 pocisków po 35 obrażeń, przebicie 3; odnowienie 14 s |
+| Strażnik run | Dwie orbitujące kule | Odnowa boru: 25 HP, spowolnienie obecnych wrogów o 65% na 3 s; odnowienie 22 s |
+
+Każda postać zdobywa własne mistrzostwo: 1 XP za zwykłego wroga, 5 za elitę, 25 za bossa. Co 50 XP otrzymuje punkt talentu. Doświadczenie i talenty zapisują się od razu i pozostają po śmierci. Zielone/niebieskie kryształy rozgrywki nadal dają zwykłe awanse tylko w danym podejściu.
+
+Trzy trwałe ścieżki, każda do 5 poziomów: potęga umiejętności (+20% bazowych obrażeń/leczenia), opanowanie (−8% bazowego odnowienia) i talent klasowy (Rycerz +8 HP, Łowca +3% szybkości, Strażnik +0,15 HP/s). Reset zwraca punkty bez usuwania mistrzostwa. Rozwój jednej postaci nie ulepsza pozostałych.
+
+Wspólny Obóz działa na wszystkie klasy. Stare zapisy z wersji 0.2 są rozszerzane automatycznie o puste profile postaci; eksport i import obejmują również mistrzostwo, talenty i wybór klasy. Import odrzuca talenty bez pokrycia w punktach.
+
+Postacie korzystają obecnie z jednego istniejącego atlasu Soldier, z różnymi kolorami; Łowca używa animacji łuku. Nie dodano nowych zestawów graficznych. Podczas awansów Łowca i Strażnik mogą odblokować miecz.
+
+Weryfikacja: 23 testy logiki oraz Chromium: wybór klasy, zakup talentu, trwałość po przeładowaniu, broń startowa, użycie Spacji, zmiana klasy i istniejące testy gry oraz zapisów.
