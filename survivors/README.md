@@ -1,4 +1,4 @@
-# Żelazny Bór — Survivors 0.1
+# Żelazny Bór — Survivors 0.2
 
 Grywalny prototyp inspirowany gatunkiem survivor / bullet heaven. Własny silnik 2D w JavaScript i Canvas; bez Godota, Unity, CDN i instalowania zależności przez gracza.
 
@@ -23,7 +23,7 @@ Nie musisz pobierać całego repozytorium ani ponad 4 GB źródłowego audio. Ws
 
 ## Zakres pierwszej wersji
 
-Jedna nieskończona leśna arena. Podłoże i efekty kręgu miecza są rysowane kodem. Rośliny i skały są dekoracją, nie blokują ruchu. Bez muzyki, kampanii, sklepu między podejściami i natywnego EXE. Balans wymaga jeszcze dłuższych testów z graczami.
+Jedna nieskończona leśna arena. Podłoże i efekty kręgu miecza są rysowane kodem. Rośliny i skały są dekoracją, nie blokują ruchu. Bez muzyki, kampanii i natywnego EXE. Balans wymaga jeszcze dłuższych testów z graczami.
 
 Silnik: krok symulacji 60 Hz, kamera, animacje atlasowe, siatka przestrzenna dla trafień, kolizje pocisków po odcinku, limity przeciwników/efektów/łupów i kolejka awansów.
 
@@ -50,3 +50,15 @@ Wykorzystano materiały już dodane przez właściciela repozytorium w commicie 
 Trzy efekty WAV przekonwertowano do mono 22,05 kHz i przycięto ciszę. Oryginały pozostają nietknięte. Interfejs jest własnym HTML/CSS.
 
 Paczki graficzne i audio zachowują licencje autorów. Repozytorium nie zawiera kompletu ich warunków; przed publicznym wydaniem należy uzupełnić pochodzenie i wymagane credits. Ten plik nie nadaje nowej licencji cudzym assetom.
+
+## Wersja 0.2 — oprawa i stały rozwój
+
+- Nowy ekran tytułowy z widokiem polany, mosiężne ramki, odświeżone karty i paski HUD.
+- Ziemna ścieżka, gęstsza roślinność, kamienny krąg, ogień i poświaty, świetliki, smugi światła, iskry trafień i awansów. Większy bohater, różne odcienie wrogów. Wszystko wykorzystuje istniejące assety i rysowanie Canvas.
+- Monety z przeciwników, 10 złota ze skrzyni, premia końcowa 3 złota za pełne 30 sekund i 100 za wygraną. Zebrane złoto trafia od razu do lokalnego zapisu.
+- Obóz: osiem stałych ulepszeń, rosnące koszty, pełny darmowy zwrot wydatków. Bonusy obowiązują od następnego podejścia.
+- Przerzut kart ma ograniczoną liczbę użyć na podejście. Odrodzenie przywraca 50% HP i 3 sekundy nietykalności, raz na podejście.
+- Zapis `ironwood-camp-v1` w localStorage. Eksport/import JSON; import sprawdza wersję, złoto i zakresy poziomów oraz wymaga potwierdzenia zastąpienia postępu.
+- Przy zmianie nazwy pliku, przeglądarki lub komputera użyj eksportu/importu; zapis lokalny plików HTML może być zależny od ścieżki i ustawień przeglądarki.
+
+Weryfikacja 0.2: 16 testów logiki oraz test Chromium obejmujący zakup, bonus w nowym podejściu, zapis po przeładowaniu, eksport, poprawny i błędny import. Obejrzano ekran tytułowy, walkę oraz Obóz.
